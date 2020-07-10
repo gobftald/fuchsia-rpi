@@ -410,6 +410,7 @@ if (!filter_out_of_astro || on_second_thought_keep_on_astro) {
       "//src/devices/board/drivers/vim2",
       "//src/devices/board/drivers/vim3",
       "//src/devices/board/drivers/vs680-evk",
+      "//src/devices/board/drivers/rpi4",
     ]
 
     if (factory_mode) {

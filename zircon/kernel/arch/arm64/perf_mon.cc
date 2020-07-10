@@ -152,7 +152,19 @@ static void arm64_perfmon_init_once(uint level) {
   }
 
   perfmon_imp = (pmcr & ARM64_PMCR_EL0_IMP_MASK) >> ARM64_PMCR_EL0_IMP_SHIFT;
-  uint32_t idcode = (pmcr & ARM64_PMCR_EL0_IDCODE_MASK) >> ARM64_PMCR_EL0_IDCODE_SHIFT;
+
+  uint32_t idcode = 0;
+  if (arm64_read_percpu_ptr()->microarch == ARM_CORTEX_A72) {
+    uint64_t dfr0 = __arm_rsr64("id_aa64dfr0_el1");
+    uint32_t pmuver = (dfr0 & ARM64_ID_AADFR0_EL1_PMU_VER) >> ARM64_ID_AADFR0_EL1_PMU_VER_SHIFT;
+	if (pmuver == 1) {
+	  idcode = 3;
+	}
+  }
+  else {
+    idcode = (pmcr & ARM64_PMCR_EL0_IDCODE_MASK) >> ARM64_PMCR_EL0_IDCODE_SHIFT;
+  }
+
   if (idcode != 3) {
     // For now only support version 3.
     TRACEF("Unexpected/unsupported PMU idcode: 0x%x\n", idcode);

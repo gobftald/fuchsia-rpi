@@ -147,6 +147,7 @@ __BEGIN_CDECLS
 #define PDEV_VID_BROADCOM           6
 #define PDEV_PID_BCM4356            1
 #define PDEV_PID_BCM43458           2
+#define PDEV_PID_BCM2711            3
 
 #define PDEV_DID_BCM_WIFI           1
 

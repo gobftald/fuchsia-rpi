@@ -115,6 +115,7 @@ common_image_contents = [
   "//src/devices/gpio/bin/gpioutil",
   "//src/devices/gpio/drivers/aml-axg-gpio",
   "//src/devices/gpio/drivers/aml-gxl-gpio",
+  "//src/devices/gpio/drivers/bcm2711-gpio",
   "//src/devices/gpio/drivers/gpio",
   "//src/devices/i2c/bin:i2cutil",
   "//src/devices/i2c/bin/i2c",
@@ -250,6 +251,7 @@ common_image_contents = [
   "//zircon/third_party/uapp/fsck-msdosfs",
   "//zircon/third_party/uapp/kilo",
   "//zircon/third_party/uapp/mkfs-msdosfs",
+  "//third_party/sbase:cat_bin",
 ]
 
 if (target_cpu == "arm64") {

@@ -75,6 +75,10 @@ zedboot_deps += [
   "//src/sys/bin/psutils:threads",
   "//src/zircon/bin/ktrace",
   "//zircon/third_party/uapp/dash",
+
+  # For GPIO testing.
+  "//src/devices/gpio/bin/gpioutil",
+  "//third_party/sbase:cat_bin",
 ]
 
 # Used by infra.
@@ -133,6 +137,7 @@ zedboot_deps += [
   "//src/devices/fw/drivers/qcom-pil",
   "//src/devices/gpio/drivers/aml-axg-gpio",
   "//src/devices/gpio/drivers/aml-gxl-gpio",
+  "//src/devices/gpio/drivers/bcm2711-gpio",
   "//src/devices/gpio/drivers/gpio",
   "//src/devices/i2c/drivers/aml-i2c",
   "//src/devices/i2c/drivers/i2c",
@@ -327,6 +332,7 @@ if (!filter_out_of_astro || on_second_thought_keep_on_astro) {
       "//src/devices/board/drivers/vim2",
       "//src/devices/board/drivers/vim3",
       "//src/devices/board/drivers/vs680-evk",
+      "//src/devices/board/drivers/rpi4",
     ]
 
     if (factory_mode) {

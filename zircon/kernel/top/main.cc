@@ -59,12 +59,12 @@ void lk_main() {
   // bring the debuglog up early so we can safely printf
   dlog_init_early();
 
+  // deal with any static constructors
+  call_constructors();
+
   // we can safely printf now since we have both the debuglog and the current thread
   // set which holds a per-line buffer
   dprintf(SPEW, "printing enabled\n");
-
-  // deal with any static constructors
-  call_constructors();
 
   lk_primary_cpu_init_level(LK_INIT_LEVEL_EARLIEST, LK_INIT_LEVEL_ARCH_EARLY - 1);
 

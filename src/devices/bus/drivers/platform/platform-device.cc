@@ -26,6 +26,7 @@ namespace platform_bus {
 zx_status_t PlatformDevice::Create(const pbus_dev_t* pdev, zx_device_t* parent, PlatformBus* bus,
                                    Type type, std::unique_ptr<platform_bus::PlatformDevice>* out) {
   fbl::AllocChecker ac;
+  printf("# PlatformDevice::Create: std::unique_ptr<platform_bus::PlatformDevice> dev(new (&ac) platform_bus::PlatformDevice(parent, bus, type, pdev))\n");
   std::unique_ptr<platform_bus::PlatformDevice> dev(
       new (&ac) platform_bus::PlatformDevice(parent, bus, type, pdev));
   if (!ac.check()) {
@@ -47,6 +48,7 @@ PlatformDevice::PlatformDevice(zx_device_t* parent, PlatformBus* bus, Type type,
       vid_(pdev->vid),
       pid_(pdev->pid),
       did_(pdev->did) {
+  printf("# PlatformDevice::PlatformDevice: parent = 0x%lx\n", (uint64_t)parent);
   strlcpy(name_, pdev->name, sizeof(name_));
 }
 

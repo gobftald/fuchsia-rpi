@@ -79,7 +79,11 @@ static const zbi_platform_id_t platform_id = {
 };
 
 static const zbi_board_info_t board_info = {
-	.revision = 0xa03111,
+	  .revision = 0xa03111,
+};
+
+static const uint8_t mac_address[] = {
+    0xdc, 0xa6, 0x32, 0x0e, 0x68, 0x22 
 };
 
 static void append_board_boot_item(zbi_header_t* bootdata) {
@@ -106,5 +110,7 @@ static void append_board_boot_item(zbi_header_t* bootdata) {
   // add platform ID
   append_boot_item(bootdata, ZBI_TYPE_PLATFORM_ID, 0, &platform_id, sizeof(platform_id));
   // add board info
-  append_boot_item(bootdata, ZBI_TYPE_DRV_BOARD_INFO, 0, &board_info, sizeof(board_info));  
+  append_boot_item(bootdata, ZBI_TYPE_DRV_BOARD_INFO, 0, &board_info, sizeof(board_info));
+  // add MAC address
+  append_boot_item(bootdata, ZBI_TYPE_DRV_MAC_ADDRESS, 0, &mac_address, sizeof(mac_address)); 
 }

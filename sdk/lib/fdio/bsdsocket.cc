@@ -59,6 +59,8 @@ MAKE_GET_SERVICE(fdio_get_socket_provider, fsocket::Provider)
 __EXPORT
 int socket(int domain, int type, int protocol) {
   fsocket::Provider::SyncClient* provider;
+  printf("## socket: fsocket::Provider::SyncClient* provider\n");
+  printf("## socket: fdio_get_socket_provider(&provider)\n");
   zx_status_t status = fdio_get_socket_provider(&provider);
   if (status != ZX_OK) {
     return ERRNO(EIO);
@@ -67,6 +69,7 @@ int socket(int domain, int type, int protocol) {
   fsocket::Domain sock_domain;
   switch (domain) {
     case AF_INET:
+      printf("## socket: sock_domain = fsocket::Domain::IPV4\n");
       sock_domain = fsocket::Domain::IPV4;
       break;
     case AF_INET6:
@@ -108,6 +111,7 @@ int socket(int domain, int type, int protocol) {
           if (sock_domain != fsocket::Domain::IPV4) {
             return ERRNO(EPROTONOSUPPORT);
           }
+          printf("## socket: proto = fsocket::DatagramSocketProtocol::ICMP_ECHO\n");
           proto = fsocket::DatagramSocketProtocol::ICMP_ECHO;
           break;
         case IPPROTO_ICMPV6:
@@ -119,6 +123,7 @@ int socket(int domain, int type, int protocol) {
         default:
           return ERRNO(EPROTONOSUPPORT);
       }
+      printf("## socket: result = provider->DatagramSocket(sock_domain, proto)\n");
       auto result = provider->DatagramSocket(sock_domain, proto);
       if (result.status() != ZX_OK) {
         return ERROR(result.status());
@@ -126,6 +131,7 @@ int socket(int domain, int type, int protocol) {
       if (result->result.is_err()) {
         return ERRNO(static_cast<int32_t>(result->result.err()));
       }
+      printf("## socket: socket_channel = std::move(result->result.mutable_response().s)\n");
       socket_channel = std::move(result->result.mutable_response().s);
     } break;
     default:
@@ -133,6 +139,8 @@ int socket(int domain, int type, int protocol) {
   }
 
   fdio_t* io;
+  printf("## socket: fdio_t* io\n");
+  printf("## socket: fdio_from_channel(std::move(socket_channel), &io)\n");
   status = fdio_from_channel(std::move(socket_channel), &io);
   if (status != ZX_OK) {
     return ERROR(status);
@@ -147,12 +155,14 @@ int socket(int domain, int type, int protocol) {
   // if (type & SOCK_CLOEXEC) {
   // }
 
+  printf("## socket: int fd = fdio_bind_to_fd(io, -1, 0)\n");
   int fd = fdio_bind_to_fd(io, -1, 0);
   if (fd < 0) {
     fdio_get_ops(io)->close(io);
     fdio_release(io);
     return ERRNO(EMFILE);
   }
+  printf("## return fd\n");
   return fd;
 }
 

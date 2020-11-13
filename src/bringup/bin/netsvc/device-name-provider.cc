@@ -64,24 +64,33 @@ int main(int argc, char** argv) {
   const char* nodename = nullptr;
   const char* ethdir = "/dev/class/ethernet";
   char device_name[HOST_NAME_MAX];
+  printf("# device-name-provider: argc = %d\n", argc);
+  printf("# argv[0] = %s\n", argv[0]);
+  printf("# device-name-provider: parse_device_name_provider_args(...)\n");
   int err = parse_device_name_provider_args(argc, argv, &errmsg, &interface, &nodename, &ethdir);
   if (err) {
     printf("device-name-provider: FATAL: parse_device_name_provider_args(_) = %d; %s\n", err,
            errmsg);
     return err;
   }
+  printf("# interface = %s\n", interface);
+  printf("# nodename = %s\n", nodename);
+  printf("# ethdir = %s\n", ethdir);
 
   if (nodename != nullptr) {
     strlcpy(device_name, nodename, sizeof(device_name));
   } else {
     uint8_t mac[6];
+    printf("# device-name-provider: netifc_discover(ethdir, interface, nullptr, mac)\n");
     if ((err = netifc_discover(ethdir, interface, nullptr, mac))) {
+      printf("# device-name-provider: strlcpy(device_name, llcpp::fuchsia::device::DEFAULT_DEVICE_NAME, sizeof(device_name))\n");
       strlcpy(device_name, llcpp::fuchsia::device::DEFAULT_DEVICE_NAME, sizeof(device_name));
       printf(
           "device-name-provider: using default name \"%s\": netifc_discover(\"%s\", ...) = %d: "
           "%s\n",
           device_name, ethdir, err, strerror(errno));
     } else {
+      printf("# device-name-provider: device_id_get(mac, device_name)\n");
       device_id_get(mac, device_name);
       printf("device-name-provider: generated device name: %s\n", device_name);
     }

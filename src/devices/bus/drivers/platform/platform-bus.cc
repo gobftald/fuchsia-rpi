@@ -252,6 +252,8 @@ zx_status_t PlatformBus::PBusCompositeDeviceAdd(const pbus_dev_t* pdev,
                                                 const device_fragment_t* fragments_list,
                                                 size_t fragments_count,
                                                 uint32_t coresident_device_index) {
+  printf("# PlatformBus::PBusCompositeDeviceAdd: pdev->name = %s\n", pdev->name);
+  printf("# fragments_count = %d\n", (int)fragments_count);
   if (!pdev || !pdev->name) {
     return ZX_ERR_INVALID_ARGS;
   }
@@ -264,6 +266,7 @@ zx_status_t PlatformBus::PBusCompositeDeviceAdd(const pbus_dev_t* pdev,
   }
 
   std::unique_ptr<platform_bus::PlatformDevice> dev;
+  printf("# PlatformBus::PBusCompositeDeviceAdd: PlatformDevice::Create(pdev, zxdev(), this, PlatformDevice::Fragment, &dev)\n");
   auto status = PlatformDevice::Create(pdev, zxdev(), this, PlatformDevice::Fragment, &dev);
   if (status != ZX_OK) {
     return status;

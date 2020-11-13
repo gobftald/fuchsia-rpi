@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "aml-ethernet.h"
+#include "bcm-ethernet.h"
 
 #include <lib/device-protocol/i2c.h>
 #include <lib/device-protocol/platform-device.h>
@@ -27,14 +27,14 @@
 #include <hw/reg.h>
 #include <soc/aml-s912/s912-hw.h>
 
-#include "aml-regs.h"
+#include "bcm-regs.h"
 
 namespace eth {
 
 #define MCU_I2C_REG_BOOT_EN_WOL 0x21
 #define MCU_I2C_REG_BOOT_EN_WOL_RESET_ENABLE 0x03
 
-zx_status_t AmlEthernet::EthBoardResetPhy() {
+zx_status_t BcmEthernet::EthBoardResetPhy() {
   if (has_reset_) {
     gpios_[PHY_RESET].Write(0);
     zx_nanosleep(zx_deadline_after(ZX_MSEC(100)));
@@ -44,7 +44,7 @@ zx_status_t AmlEthernet::EthBoardResetPhy() {
   return ZX_OK;
 }
 
-zx_status_t AmlEthernet::InitPdev() {
+zx_status_t BcmEthernet::InitPdev() {
   composite_protocol_t composite;
 
   auto status = device_get_protocol(parent(), ZX_PROTOCOL_COMPOSITE, &composite);
@@ -56,7 +56,7 @@ zx_status_t AmlEthernet::InitPdev() {
 
   zx_device_t* fragments[FRAGMENT_COUNT];
   size_t actual;
-  printf("# AmlEthernet::InitPdev: composite_get_fragments\n");
+  printf("# BcmEthernet::InitPdev: composite_get_fragments\n");
   composite_get_fragments(&composite, fragments, std::size(fragments), &actual);
   /*
   if (actual == std::size(fragments)) {
@@ -72,7 +72,7 @@ zx_status_t AmlEthernet::InitPdev() {
   */
 
   pdev_protocol_t pdev;
-  printf("# AmlEthernet::InitPdev: device_get_protocol(fragments[FRAGMENT_PDEV], ZX_PROTOCOL_PDEV, &pdev)\n");
+  printf("# BcmEthernet::InitPdev: device_get_protocol(fragments[FRAGMENT_PDEV], ZX_PROTOCOL_PDEV, &pdev)\n");
   status = device_get_protocol(fragments[FRAGMENT_PDEV], ZX_PROTOCOL_PDEV, &pdev);
   // fragments[FRAGMENT_PDEV] = fragment-proxy
   if (status != ZX_OK) {
@@ -109,11 +109,11 @@ zx_status_t AmlEthernet::InitPdev() {
   }
   gpios_[PHY_INTR] = &gpio;
 
-  // Map amlogic peripheral control registers.
+  // Map broadcom peripheral control registers.
   printf("# pdev_.MapMmio(MMIO_PERIPH, &periph_mmio_)\n");
   status = pdev_.MapMmio(MMIO_PERIPH, &periph_mmio_);
   if (status != ZX_OK) {
-    zxlogf(ERROR, "aml-dwmac: could not map periph mmio: %d", status);
+    zxlogf(ERROR, "bcm-bcmac: could not map periph mmio: %d", status);
     return status;
   }
 
@@ -121,7 +121,7 @@ zx_status_t AmlEthernet::InitPdev() {
   printf("# pdev_.MapMmio(MMIO_HHI, &hhi_mmio_)\n");
   status = pdev_.MapMmio(MMIO_HHI, &hhi_mmio_);
   if (status != ZX_OK) {
-    zxlogf(ERROR, "aml-dwmac: could not map hiu mmio: %d", status);
+    zxlogf(ERROR, "bcm-bcmac: could not map hiu mmio: %d", status);
     return status;
   }
   */
@@ -129,26 +129,26 @@ zx_status_t AmlEthernet::InitPdev() {
   return status;
 }
 
-zx_status_t AmlEthernet::Bind() {
+zx_status_t BcmEthernet::Bind() {
   /*
   // Set reset line to output if implemented
   if (has_reset_) {
     gpios_[PHY_RESET].ConfigOut(0);
   }
 
-  // Initialize AMLogic peripheral registers associated with dwmac.
+  // Initialize Broadcom peripheral registers associated with bcmac.
   // Sorry about the magic...rtfm
   periph_mmio_->Write32(0x1621, PER_ETH_REG0);
   */
 
   pdev_board_info_t board;
   //bool is_vim3 = false;
-  printf("# AmlEthernet::Bind: pdev_.GetBoardInfo(&board)\n");
+  printf("# BcmEthernet::Bind: pdev_.GetBoardInfo(&board)\n");
   zx_status_t status = pdev_.GetBoardInfo(&board);
 
   /*
   if (status == ZX_OK) {
-    is_vim3 = ((board.vid == PDEV_VID_KHADAS) &&
+    is_vim3 = ((board.vid == PDEV_VID_BROADCOM) &&
                (board.pid == PDEV_PID_VIM3));
   }
 
@@ -170,7 +170,7 @@ zx_status_t AmlEthernet::Bind() {
   uint8_t write_buf[2] = {MCU_I2C_REG_BOOT_EN_WOL, MCU_I2C_REG_BOOT_EN_WOL_RESET_ENABLE};
   status = i2c_.WriteSync(write_buf, sizeof(write_buf));
   if (status) {
-    zxlogf(ERROR, "aml-ethernet: WOL reset enable to MCU failed: %d", status);
+    zxlogf(ERROR, "bcm-ethernet: WOL reset enable to MCU failed: %d", status);
     return status;
   }
   */
@@ -181,7 +181,7 @@ zx_status_t AmlEthernet::Bind() {
   status = device_get_metadata(parent(), DEVICE_METADATA_ETH_MAC_DEVICE, &mac_info,
                                sizeof(eth_dev_metadata_t), &actual);
   if (status != ZX_OK || actual != sizeof(eth_dev_metadata_t)) {
-    zxlogf(ERROR, "aml-ethernet: Could not get MAC metadata %d", status);
+    zxlogf(ERROR, "bcm-ethernet: Could not get MAC metadata %d", status);
     return status;
   }
 
@@ -191,33 +191,33 @@ zx_status_t AmlEthernet::Bind() {
   };
   printf("# vid = %d, did = %d\n", mac_info.vid, mac_info.did);
 
-  return DdkAdd(ddk::DeviceAddArgs("aml-ethernet").set_props(props));
+  return DdkAdd(ddk::DeviceAddArgs("bcm-ethernet").set_props(props));
 }
 
-void AmlEthernet::DdkUnbindNew(ddk::UnbindTxn txn) { txn.Reply(); }
+void BcmEthernet::DdkUnbindNew(ddk::UnbindTxn txn) { txn.Reply(); }
 
-void AmlEthernet::DdkRelease() { delete this; }
+void BcmEthernet::DdkRelease() { delete this; }
 
-zx_status_t AmlEthernet::Create(void* ctx, zx_device_t* parent) {
-  zxlogf(INFO, "aml-ethernet: adding driver");
+zx_status_t BcmEthernet::Create(void* ctx, zx_device_t* parent) {
+  zxlogf(INFO, "bcm-ethernet: adding driver");
   fbl::AllocChecker ac;
-  auto eth_device = fbl::make_unique_checked<AmlEthernet>(&ac, parent);
+  auto eth_device = fbl::make_unique_checked<BcmEthernet>(&ac, parent);
   if (!ac.check()) {
     return ZX_ERR_NO_MEMORY;
   }
 
   zx_status_t status = eth_device->InitPdev();
   if (status != ZX_OK) {
-    zxlogf(ERROR, "aml-ethernet: failed to init platform device");
+    zxlogf(ERROR, "bcm-ethernet: failed to init platform device");
     return status;
   }
 
   status = eth_device->Bind();
   if (status != ZX_OK) {
-    zxlogf(ERROR, "aml-ethernet driver failed to get added: %d", status);
+    zxlogf(ERROR, "bcm-ethernet driver failed to get added: %d", status);
     return status;
   } else {
-    zxlogf(INFO, "aml-ethernet driver added");
+    zxlogf(INFO, "bcm-ethernet driver added");
   }
 
   // eth_device intentionally leaked as it is now held by DevMgr
@@ -229,17 +229,16 @@ zx_status_t AmlEthernet::Create(void* ctx, zx_device_t* parent) {
 static constexpr zx_driver_ops_t driver_ops = []() {
   zx_driver_ops_t ops = {};
   ops.version = DRIVER_OPS_VERSION;
-  ops.bind = AmlEthernet::Create;
+  ops.bind = BcmEthernet::Create;
   return ops;
 }();
 
 }  // namespace eth
 
 // clang-format off
-ZIRCON_DRIVER_BEGIN(aml_eth, eth::driver_ops, "aml-ethernet", "0.1", 5)
+ZIRCON_DRIVER_BEGIN(bcm_eth, eth::driver_ops, "bcm-ethernet", "0.1", 4)
     BI_ABORT_IF(NE, BIND_PROTOCOL, ZX_PROTOCOL_COMPOSITE),
-    BI_ABORT_IF(NE, BIND_PLATFORM_DEV_VID, PDEV_VID_AMLOGIC),
-    BI_ABORT_IF(NE, BIND_PLATFORM_DEV_DID, PDEV_DID_AMLOGIC_ETH),
-    BI_MATCH_IF(EQ, BIND_PLATFORM_DEV_PID, PDEV_PID_AMLOGIC_S912),
-    BI_MATCH_IF(EQ, BIND_PLATFORM_DEV_PID, PDEV_PID_AMLOGIC_A311D),
-ZIRCON_DRIVER_END(aml_eth)
+    BI_ABORT_IF(NE, BIND_PLATFORM_DEV_VID, PDEV_VID_BROADCOM),
+    BI_ABORT_IF(NE, BIND_PLATFORM_DEV_DID, PDEV_DID_BCM_ETH),
+    BI_MATCH_IF(EQ, BIND_PLATFORM_DEV_PID, PDEV_PID_BCM54xx),
+ZIRCON_DRIVER_END(bcm_eth)

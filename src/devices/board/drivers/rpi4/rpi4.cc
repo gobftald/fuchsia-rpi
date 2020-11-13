@@ -48,16 +48,19 @@ int Rpi4::Thread() {
   // Load protocol implementation drivers first.
   zx_status_t status;
 
+  /*
   if ((status = SysmemInit()) != ZX_OK) {
     zxlogf(ERROR, "SysmemInit() failed: %d", status);
     init_txn_->Reply(ZX_ERR_INTERNAL);
     return status;
   }
+  */
   if ((status = GpioInit()) != ZX_OK) {
     zxlogf(ERROR, "GpioInit() failed: %d", status);
     init_txn_->Reply(ZX_ERR_INTERNAL);
     return status;
   }
+  /*
   if ((status = ClkInit()) != ZX_OK) {
     zxlogf(ERROR, "ClkInit() failed: %d", status);
     init_txn_->Reply(ZX_ERR_INTERNAL);
@@ -68,12 +71,13 @@ int Rpi4::Thread() {
     init_txn_->Reply(ZX_ERR_INTERNAL);
     return status;
   }
-
+  */
   if ((status = EthInit()) != ZX_OK) {
     zxlogf(ERROR, "EthInit() failed: %d", status);
     init_txn_->Reply(ZX_ERR_INTERNAL);
     return status;
   }
+  /*
   if ((status = EmmcInit()) != ZX_OK) {
     zxlogf(ERROR, "EmmcInit() failed: %d\n", status);
     init_txn_->Reply(ZX_ERR_INTERNAL);
@@ -94,7 +98,7 @@ int Rpi4::Thread() {
     init_txn_->Reply(ZX_ERR_INTERNAL);
     return status;
   }
-
+  */
   init_txn_->Reply(status);
   return ZX_OK;
 }

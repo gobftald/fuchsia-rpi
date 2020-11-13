@@ -384,6 +384,7 @@ static fdio_ops_t fdio_datagram_socket_ops = {
         },
     .wait_begin =
         [](fdio_t* io, uint32_t events, zx_handle_t* handle, zx_signals_t* out_signals) {
+          printf("### fdio_datagram_socket_ops.wait_begin\n");
           auto const sio = reinterpret_cast<zxio_datagram_socket_t*>(fdio_get_zxio(io));
           *handle = sio->event.get();
           zx_signals_t signals = ZX_EVENTPAIR_PEER_CLOSED;
@@ -400,6 +401,7 @@ static fdio_ops_t fdio_datagram_socket_ops = {
         },
     .wait_end =
         [](fdio_t* io, zx_signals_t signals, uint32_t* out_events) {
+          printf("### fdio_datagram_socket_ops.wait_end\n");
           uint32_t events = 0;
           if (signals &
               (ZX_EVENTPAIR_PEER_CLOSED | ZXSIO_SIGNAL_INCOMING | ZXSIO_SIGNAL_SHUTDOWN_READ)) {
@@ -419,6 +421,7 @@ static fdio_ops_t fdio_datagram_socket_ops = {
         },
     .posix_ioctl =
         [](fdio_t* io, int req, va_list va) {
+          printf("### fdio_datagram_socket_ops.posix_ioctl\n");
           return zxsio_posix_ioctl(io, req, va, fdio_default_posix_ioctl);
         },
     .get_token = fdio_default_get_token,
@@ -436,10 +439,12 @@ static fdio_ops_t fdio_datagram_socket_ops = {
     .set_flags = fdio_default_set_flags,
     .bind =
         [](fdio_t* io, const struct sockaddr* addr, socklen_t addrlen, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.bind\n");
           return base_bind(fdio_datagram_socket_get_channel(io), addr, addrlen, out_code);
         },
     .connect =
         [](fdio_t* io, const struct sockaddr* addr, socklen_t addrlen, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.connect\n");
           return base_connect(fdio_datagram_socket_get_channel(io), addr, addrlen, out_code);
         },
     .listen = [](fdio_t* io, int backlog, int16_t* out_code) { return ZX_ERR_WRONG_TYPE; },
@@ -447,25 +452,30 @@ static fdio_ops_t fdio_datagram_socket_ops = {
                  int16_t* out_code) { return ZX_ERR_WRONG_TYPE; },
     .getsockname =
         [](fdio_t* io, struct sockaddr* addr, socklen_t* addrlen, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.getsockname\n");
           return base_getsockname(fdio_datagram_socket_get_channel(io), addr, addrlen, out_code);
         },
     .getpeername =
         [](fdio_t* io, struct sockaddr* addr, socklen_t* addrlen, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.getpeername\n");
           return base_getpeername(fdio_datagram_socket_get_channel(io), addr, addrlen, out_code);
         },
     .getsockopt =
         [](fdio_t* io, int level, int optname, void* optval, socklen_t* optlen, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.getsockopt\n");
           return base_getsockopt(fdio_datagram_socket_get_channel(io), level, optname, optval,
                                  optlen, out_code);
         },
     .setsockopt =
         [](fdio_t* io, int level, int optname, const void* optval, socklen_t optlen,
            int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.setsockopt\n");
           return base_setsockopt(fdio_datagram_socket_get_channel(io), level, optname, optval,
                                  optlen, out_code);
         },
     .recvmsg =
         [](fdio_t* io, struct msghdr* msg, int flags, size_t* out_actual, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.recvmsg\n");
           auto const sio = reinterpret_cast<zxio_datagram_socket_t*>(fdio_get_zxio(io));
 
           size_t datalen = 0;
@@ -530,6 +540,7 @@ static fdio_ops_t fdio_datagram_socket_ops = {
         },
     .sendmsg =
         [](fdio_t* io, const struct msghdr* msg, int flags, size_t* out_actual, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.sendmsg\n");
           auto const sio = reinterpret_cast<zxio_datagram_socket_t*>(fdio_get_zxio(io));
 
           std::vector<uint8_t> data;
@@ -582,6 +593,7 @@ static fdio_ops_t fdio_datagram_socket_ops = {
         },
     .shutdown =
         [](fdio_t* io, int how, int16_t* out_code) {
+          printf("### fdio_datagram_socket_ops.shutdown\n");
           auto const sio = reinterpret_cast<zxio_datagram_socket_t*>(fdio_get_zxio(io));
           auto response = sio->client.Shutdown(static_cast<int16_t>(how));
           zx_status_t status = response.status();
@@ -638,6 +650,7 @@ static constexpr zxio_ops_t zxio_datagram_socket_ops = []() {
 
 fdio_t* fdio_datagram_socket_create(
     zx::eventpair event, llcpp::fuchsia::posix::socket::DatagramSocket::SyncClient client) {
+  printf("### fdio_datagram_socket_create\n");
   fdio_t* io = fdio_alloc(&fdio_datagram_socket_ops);
   if (io == nullptr) {
     return nullptr;

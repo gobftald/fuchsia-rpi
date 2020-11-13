@@ -48,11 +48,13 @@ zx_status_t EthDev::PromiscHelperLogicLocked(bool req_on, uint32_t state_bit, ui
 }
 
 zx_status_t EthDev::SetPromiscLocked(bool req_on) {
+  printf("# EthDev::SetPromiscLocked\n");
   return PromiscHelperLogicLocked(req_on, kStatePromiscuous, ETHERNET_SETPARAM_PROMISC,
                                   &edev0_->promisc_requesters_);
 }
 
 zx_status_t EthDev::SetMulticastPromiscLocked(bool req_on) {
+  printf("# EthDev::SetMulticastPromiscLocked\n");
   return PromiscHelperLogicLocked(req_on, kStateMulticastPromiscuous,
                                   ETHERNET_SETPARAM_MULTICAST_PROMISC,
                                   &edev0_->multicast_promisc_requesters_);
@@ -86,6 +88,7 @@ int EthDev::MulticastAddressIndex(const uint8_t* mac) {
 }
 
 zx_status_t EthDev::AddMulticastAddressLocked(const uint8_t* mac) {
+  printf("# EthDev::AddMulticastAddressLocked\n");
   if (!(mac[0] & 1)) {
     return ZX_ERR_INVALID_ARGS;
   }
@@ -104,6 +107,7 @@ zx_status_t EthDev::AddMulticastAddressLocked(const uint8_t* mac) {
 }
 
 zx_status_t EthDev::DelMulticastAddressLocked(const uint8_t* mac) {
+  printf("# EthDev::DelMulticastAddressLocked\n");
   int ix = MulticastAddressIndex(mac);
   if (ix == -1) {
     // We may have overflowed the list and not remember an address. Nothing will go wrong if
@@ -118,6 +122,7 @@ zx_status_t EthDev::DelMulticastAddressLocked(const uint8_t* mac) {
 // The thread safety analysis cannot reason through the aliasing of
 // edev0 and edev->edev0__, so disable it.
 zx_status_t EthDev::TestClearMulticastPromiscLocked() TA_NO_THREAD_SAFETY_ANALYSIS {
+  printf("# EthDev::TestClearMulticastPromiscLocked\n");
   zx_status_t status = ZX_OK;
   for (auto& edev_i : edev0_->list_active_) {
     if ((status = edev_i.SetMulticastPromiscLocked(false)) != ZX_OK) {
@@ -286,6 +291,7 @@ void EthDev0::TransmitEcho(const void* data, size_t len) TA_NO_THREAD_SAFETY_ANA
 }
 
 zx_status_t EthDev::TransmitListenLocked(bool yes) {
+  printf("# EthDev::TransmitListenLocked\n");
   // Update our state.
   if (yes) {
     state_ |= kStateTransmissionListen;
@@ -406,6 +412,7 @@ zx_status_t EthDev::GetFifosLocked(struct fuchsia_hardware_ethernet_Fifos* fifos
   struct fuchsia_hardware_ethernet_Fifos temp_fifo;
   zx::fifo transmit_fifo;
   zx::fifo receive_fifo;
+  printf("# EthDev::GetFifosLocked\n");
   if ((status = zx_fifo_create(kFifoDepth, kFifoEntrySize, 0, &temp_fifo.tx,
                                transmit_fifo.reset_and_get_address())) < 0) {
     zxlogf(ERROR, "eth_create  [%s]: failed to create tx fifo: %d", name_, status);
@@ -430,6 +437,7 @@ zx_status_t EthDev::GetFifosLocked(struct fuchsia_hardware_ethernet_Fifos* fifos
 }
 
 zx_status_t EthDev::SetIObufLocked(zx_handle_t vmo) {
+  printf("# EthDev::SetIObufLocked: if (io_vmo_.is_valid() || io_buffer_.start() != nullptr)\n");
   if (io_vmo_.is_valid() || io_buffer_.start() != nullptr) {
     return ZX_ERR_ALREADY_BOUND;
   }
@@ -441,11 +449,14 @@ zx_status_t EthDev::SetIObufLocked(zx_handle_t vmo) {
   std::unique_ptr<zx_paddr_t[]> paddr_map = nullptr;
   zx::pmt pmt;
 
+  printf("# EthDev::SetIObufLocked: zx::vmo io_vmo = zx::vmo(vmo)\n");
   if ((status = io_vmo.get_size(&size)) < 0) {
     zxlogf(ERROR, "eth [%s]: could not get io_buf size: %d", name_, status);
     return status;
   }
+  printf("# EthDev::SetIObufLocked: io_vmo.get_size(&size)) -> size = 0x%x (%d)\n", (uint32_t)size, (uint32_t)size);
 
+  printf("# EthDev::SetIObufLocked: io_buffer.Map(io_vmo, 0, size, ZX_VM_PERM_READ | ZX_VM_PERM_WRITE | ZX_VM_REQUIRE_NON_RESIZABLE, NULL)\n");
   if ((status = io_buffer.Map(io_vmo, 0, size,
                               ZX_VM_PERM_READ | ZX_VM_PERM_WRITE | ZX_VM_REQUIRE_NON_RESIZABLE,
                               NULL)) < 0) {
@@ -456,20 +467,26 @@ zx_status_t EthDev::SetIObufLocked(zx_handle_t vmo) {
   // If the driver indicates that it will be doing DMA to/from the vmo,
   // We pin the memory and cache the physical address list.
   if (edev0_->info_.features & ETHERNET_FEATURE_DMA) {
+    printf("# EthDev::SetIObufLocked: if (edev0_->info_.features & ETHERNET_FEATURE_DMA)\n");
     fbl::AllocChecker ac;
     size_t pages = ZX_ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+    printf("# EthDev::SetIObufLocked: pages = ZX_ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE = 0x%x (%d)\n", (uint32_t)pages, (uint32_t)pages);
+    printf("# EthDev::SetIObufLocked: paddr_map = std::unique_ptr<zx_paddr_t[]>(new (&ac) zx_paddr_t[pages])\n");
     paddr_map = std::unique_ptr<zx_paddr_t[]>(new (&ac) zx_paddr_t[pages]);
     if (!ac.check()) {
       status = ZX_ERR_NO_MEMORY;
       return status;
     }
+    printf("# EthDev::SetIObufLocked: zx::bti bti = zx::bti()\n");
     zx::bti bti = zx::bti();
+    printf("# EthDev::SetIObufLocked: edev0_->mac_.GetBti(&bti)\n");
     edev0_->mac_.GetBti(&bti);
     if (!bti.is_valid()) {
       status = ZX_ERR_INTERNAL;
       zxlogf(ERROR, "eth [%s]: ethernet_impl_get_bti return invalid handle", name_);
       return status;
     }
+    printf("# EthDev::SetIObufLocked: bti.pin(ZX_BTI_PERM_READ | ZX_BTI_PERM_WRITE, io_vmo, 0, size, paddr_map.get(), pages, &pmt)\n");
     if ((status = bti.pin(ZX_BTI_PERM_READ | ZX_BTI_PERM_WRITE, io_vmo, 0, size, paddr_map.get(),
                           pages, &pmt)) != ZX_OK) {
       zxlogf(ERROR, "eth [%s]: bti_pin failed, can't pin vmo: %d", name_, status);
@@ -477,9 +494,13 @@ zx_status_t EthDev::SetIObufLocked(zx_handle_t vmo) {
     }
   }
 
+  printf("# EthDev::SetIObufLocked: io_vmo_ = std::move(io_vmo)\n");
   io_vmo_ = std::move(io_vmo);
+  printf("# EthDev::SetIObufLocked: paddr_map_ = std::move(paddr_map)\n");
   paddr_map_ = std::move(paddr_map);
+  printf("# EthDev::SetIObufLocked: io_buffer_ = std::move(io_buffer)\n");
   io_buffer_ = std::move(io_buffer);
+  printf("# EthDev::SetIObufLocked: pmt_ = std::move(pmt)\n");
   pmt_ = std::move(pmt);
 
   return ZX_OK;
@@ -497,6 +518,7 @@ zx_status_t EthDev::StartLocked() TA_NO_THREAD_SAFETY_ANALYSIS {
     return ZX_OK;
   }
 
+  printf("# EthDev::StartLocked\n");
   if (!(state_ & kStateTransmitThreadCreated)) {
     int r = thrd_create_with_name(
         &transmit_thread_,
@@ -551,6 +573,7 @@ void EthDev::ClearFilteringLocked() TA_NO_THREAD_SAFETY_ANALYSIS {
 // The thread safety analysis cannot reason through the aliasing of
 // edev0 and edev->edev0_, so disable it.
 zx_status_t EthDev::StopLocked() TA_NO_THREAD_SAFETY_ANALYSIS {
+  printf("# EthDev::StopLocked\n");
   if (state_ & kStateRunning) {
     state_ &= (~kStateRunning);
     edev0_->list_active_.erase(*this);
@@ -570,10 +593,13 @@ zx_status_t EthDev::StopLocked() TA_NO_THREAD_SAFETY_ANALYSIS {
 }
 
 zx_status_t EthDev::SetClientNameLocked(const void* in_buf, size_t in_len) {
+  printf("# EthDev::SetClientNameLocked: in_buf = '%s'\n", (char*)in_buf);
   if (in_len >= sizeof(name_)) {
     in_len = sizeof(name_) - 1;
   }
+  printf("# EthDev::SetClientNameLocked: memcpy(name_, in_buf, in_len)\n");
   memcpy(name_, in_buf, in_len);
+  printf("# EthDev::SetClientNameLocked: name_[in_len] = '\\0'\\n\n");
   name_[in_len] = '\0';
   return ZX_OK;
 }
@@ -619,7 +645,9 @@ zx_status_t EthDev::MsgSetIOBufferLocked(zx_handle_t h, fidl_txn_t* txn) {
   return REPLY(SetIOBuffer)(txn, SetIObufLocked(h));
 }
 
-zx_status_t EthDev::MsgStartLocked(fidl_txn_t* txn) { return REPLY(Start)(txn, StartLocked()); }
+zx_status_t EthDev::MsgStartLocked(fidl_txn_t* txn) {
+  return REPLY(Start)(txn, StartLocked());
+}
 
 zx_status_t EthDev::MsgStopLocked(fidl_txn_t* txn) {
   StopLocked();
@@ -627,10 +655,12 @@ zx_status_t EthDev::MsgStopLocked(fidl_txn_t* txn) {
 }
 
 zx_status_t EthDev::MsgListenStartLocked(fidl_txn_t* txn) {
+  printf("# EthDev::MsgListenStartLocked\n");
   return REPLY(ListenStart)(txn, TransmitListenLocked(true));
 }
 
 zx_status_t EthDev::MsgListenStopLocked(fidl_txn_t* txn) {
+  printf("# EthDev::MsgListenStopLocked\n");
   TransmitListenLocked(false);
   return REPLY(ListenStop)(txn);
 }
@@ -648,6 +678,7 @@ zx_status_t EthDev::MsgGetStatusLocked(fidl_txn_t* txn) {
     return ZX_ERR_INTERNAL;
   }
 
+  printf("# EthDev::MsgGetStatusLocked\n");
   return REPLY(GetStatus)(txn, edev0_->status_);
 }
 
@@ -657,28 +688,33 @@ zx_status_t EthDev::MsgSetPromiscLocked(bool enabled, fidl_txn_t* txn) {
 
 zx_status_t EthDev::MsgConfigMulticastAddMacLocked(const fuchsia_hardware_ethernet_MacAddress* mac,
                                                    fidl_txn_t* txn) {
+  printf("# EthDev::MsgConfigMulticastAddMacLocked\n");
   zx_status_t status = AddMulticastAddressLocked(mac->octets);
   return REPLY(ConfigMulticastAddMac)(txn, status);
 }
 
 zx_status_t EthDev::MsgConfigMulticastDeleteMacLocked(
     const fuchsia_hardware_ethernet_MacAddress* mac, fidl_txn_t* txn) {
+  printf("# EthDev::MsgConfigMulticastDeleteMacLocked\n");
   zx_status_t status = DelMulticastAddressLocked(mac->octets);
   return REPLY(ConfigMulticastDeleteMac)(txn, status);
 }
 
 zx_status_t EthDev::MsgConfigMulticastSetPromiscuousModeLocked(bool enabled, fidl_txn_t* txn) {
+  printf("# EthDev::MsgConfigMulticastSetPromiscuousModeLocked\n");
   zx_status_t status = SetMulticastPromiscLocked(enabled);
   return REPLY(ConfigMulticastSetPromiscuousMode)(txn, status);
 }
 
 zx_status_t EthDev::MsgConfigMulticastTestFilterLocked(fidl_txn_t* txn) {
+  printf("# EthDev::MsgConfigMulticastTestFilterLocked\n");
   zxlogf(INFO, "MULTICAST_TEST_FILTER invoked. Turning multicast-promisc off unconditionally.");
   zx_status_t status = TestClearMulticastPromiscLocked();
   return REPLY(ConfigMulticastTestFilter)(txn, status);
 }
 
 zx_status_t EthDev::MsgDumpRegistersLocked(fidl_txn_t* txn) {
+  printf("# EthDev::MsgDumpRegistersLocked\n");
   zx_status_t status = edev0_->mac_.SetParam(ETHERNET_SETPARAM_DUMP_REGS, 0, nullptr, 0);
   return REPLY(DumpRegisters)(txn, status);
 }
@@ -858,6 +894,10 @@ zx_status_t EthDev::DdkClose(uint32_t flags) {
 zx_status_t EthDev::AddDevice(zx_device_t** out) {
   zx_status_t status;
 
+  printf("# EthDev::AddDevice: kFifoDepth = %d\n", kFifoDepth);
+  printf("# EthDev::AddDevice: for (size_t ndx = 0; ndx < kFifoDepth; ndx++)\n");
+  printf("# EthDev::AddDevice:    auto buffer = TransmitBuffer::Alloc(edev0_->info_.netbuf_size)\n");
+  printf("# EthDev::AddDevice:    free_transmit_buffers_.push(*std::move(buffer))\n");
   for (size_t ndx = 0; ndx < kFifoDepth; ndx++) {
     auto buffer = TransmitBuffer::Alloc(edev0_->info_.netbuf_size);
     if (!buffer) {
@@ -866,17 +906,24 @@ zx_status_t EthDev::AddDevice(zx_device_t** out) {
     free_transmit_buffers_.push(*std::move(buffer));
   }
 
+  printf("# EthDev::AddDevice: DdkAdd(ddk::DeviceAddArgs(\"ethernet\")\n");
+  printf("# EthDev::AddDevice:        .set_flags(DEVICE_ADD_INSTANCE)\n");
+  printf("# EthDev::AddDevice:        .set_proto_id(ZX_PROTOCOL_ETHERNET)\n");
   if ((status = DdkAdd(ddk::DeviceAddArgs("ethernet")
                            .set_flags(DEVICE_ADD_INSTANCE)
                            .set_proto_id(ZX_PROTOCOL_ETHERNET))) != ZX_OK) {
     return status;
   }
   if (out) {
+    printf("# EthDev::AddDevice: if (out)\n");
+    printf("# EthDev::AddDevice: *out = zxdev_\n");
     *out = zxdev_;
   }
 
   {
+    printf("# EthDev::AddDevice: fbl::AutoLock lock(&edev0_->ethdev_lock_)\n");
     fbl::AutoLock lock(&edev0_->ethdev_lock_);
+    printf("# EthDev::AddDevice: edev0_->list_idle_.push_back(fbl::RefPtr(this))\n");
     edev0_->list_idle_.push_back(fbl::RefPtr(this));
   }
 
@@ -891,9 +938,11 @@ EthDev0::~EthDev0() {
 
 zx_status_t EthDev0::DdkOpen(zx_device_t** out, uint32_t flags) {
   fbl::AllocChecker ac;
+  printf("# EthDev0::DdkOpen: auto edev = fbl::MakeRefCountedChecked<EthDev>(&ac, this->zxdev_, this)\n");
   auto edev = fbl::MakeRefCountedChecked<EthDev>(&ac, this->zxdev_, this);
   // Hold a second reference to the device to prevent a use-after-free
   // in the case where DdkRelease is called immediately after AddDevice.
+  printf("# EthDev0::DdkOpen: fbl::RefPtr<EthDev> dev_ref_2 = edev\n");
   fbl::RefPtr<EthDev> dev_ref_2 = edev;
   if (!ac.check()) {
     return ZX_ERR_NO_MEMORY;
@@ -901,10 +950,12 @@ zx_status_t EthDev0::DdkOpen(zx_device_t** out, uint32_t flags) {
   // Add a reference for the devhost handle.
   // This will be removed in DdkRelease.
   zx_status_t status;
+  printf("# EthDev0::DdkOpen: edev->AddDevice(out)\n");
   if ((status = edev->AddDevice(out)) < 0) {
     return status;
   }
 
+  printf("# EthDev0::DdkOpen: __UNUSED auto dev = fbl::ExportToRawPtr(&edev)\n");
   __UNUSED auto dev = fbl::ExportToRawPtr(&edev);
   return ZX_OK;
 }
@@ -951,41 +1002,57 @@ zx_status_t EthDev0::AddDevice() {
   ethernet_impl_protocol_ops_t* ops;
   ethernet_impl_protocol_t proto;
 
+  printf("# EthDev0::AddDevice: if (!mac_.is_valid())\n");
   if (!mac_.is_valid()) {
     zxlogf(ERROR, "eth: bind: no ethermac protocol");
     return ZX_ERR_INTERNAL;
   }
 
+  printf("# EthDev0::AddDevice: mac_.GetProto(&proto)\n");
   mac_.GetProto(&proto);
+  printf("# EthDev0::AddDevice: ops = proto.ops\n");
   ops = proto.ops;
+  printf("# EthDev0::AddDevice: if (ops->query == nullptr || ops->stop == nullptr ...\n");
   if (ops->query == nullptr || ops->stop == nullptr || ops->start == nullptr ||
       ops->queue_tx == nullptr || ops->set_param == nullptr) {
     zxlogf(ERROR, "eth: bind: device '%s': incomplete ethermac protocol", device_get_name(parent_));
     return ZX_ERR_NOT_SUPPORTED;
   }
 
+  printf("# EthDev0::AddDevice: mac_.Query(0, &info_)\n");
   if ((status = mac_.Query(0, &info_)) < 0) {
     zxlogf(ERROR, "eth: bind: ethermac query failed: %d", status);
     return status;
   }
+  printf("# EthDev0::AddDevice: info_.features = 0x%x\n", info_.features);
+  printf("# EthDev0::AddDevice: info_.mtu = %d\n", info_.mtu);
+  printf("# EthDev0::AddDevice: info_.mac = %02x:%02x:%02x:%02x:%02x:%02x\n",
+         info_.mac[0], info_.mac[1], info_.mac[2], info_.mac[3], info_.mac[4], info_.mac[5]);
+  printf("# EthDev0::AddDevice: netbuf_size = 0x%lx\n", (uint64_t)info_.netbuf_size);
 
   if ((info_.features & ETHERNET_FEATURE_DMA) && (ops->get_bti == nullptr)) {
+    printf("# EthDev0::AddDevice: if ((info_.features & ETHERNET_FEATURE_DMA) && (ops->get_bti == nullptr))\n");
     zxlogf(ERROR, "eth: bind: device '%s': does not implement ops->get_bti()",
            device_get_name(parent_));
     return ZX_ERR_NOT_SUPPORTED;
   }
 
   if (info_.netbuf_size < sizeof(ethernet_netbuf_t)) {
+    printf("# EthDev0::AddDevice: if (info_.netbuf_size < sizeof(ethernet_netbuf_t))\n");
     zxlogf(ERROR, "eth: bind: device '%s': invalid buffer size %ld", device_get_name(parent_),
            info_.netbuf_size);
     return ZX_ERR_NOT_SUPPORTED;
   }
+  printf("# EthDev0::AddDevice: info_.netbuf_size = ZX_ROUNDUP(info_.netbuf_size, 8)\n");
   info_.netbuf_size = ZX_ROUNDUP(info_.netbuf_size, 8);
+  printf("# EthDev0::AddDevice: info_.netbuf_size = %lu\n", info_.netbuf_size);
 
+  printf("# EthDev0::AddDevice: DdkAdd(ddk::DeviceAddArgs(\"ethernet\").set_proto_id(ZX_PROTOCOL_ETHERNET))\n");
   if ((status = DdkAdd(ddk::DeviceAddArgs("ethernet").set_proto_id(ZX_PROTOCOL_ETHERNET))) < 0) {
     return status;
   }
   // Make sure device starts with expected settings.
+  printf("# EthDev0::AddDevice: mac_.SetParam(ETHERNET_SETPARAM_PROMISC, 0, nullptr, 0)\n");
   if ((status = mac_.SetParam(ETHERNET_SETPARAM_PROMISC, 0, nullptr, 0)) != ZX_OK) {
     // Log the error, but continue, as this is not critical.
     zxlogf(WARNING, "eth: bind: device '%s': unable to disable promiscuous mode: %s",
@@ -997,6 +1064,7 @@ zx_status_t EthDev0::AddDevice() {
 
 zx_status_t EthDev0::EthBind(void* ctx, zx_device_t* dev) {
   fbl::AllocChecker ac;
+  printf("# EthDev0::EthBind: edev0 = fbl::make_unique_checked<eth::EthDev0>(&ac, dev)\n");
   auto edev0 = fbl::make_unique_checked<eth::EthDev0>(&ac, dev);
 
   if (!ac.check()) {
@@ -1004,12 +1072,14 @@ zx_status_t EthDev0::EthBind(void* ctx, zx_device_t* dev) {
   }
 
   zx_status_t status;
+  printf("# EthDev0::EthBind: edev0->AddDevice()\n");
   if ((status = edev0->AddDevice()) != ZX_OK) {
     return status;
   }
 
   // On successful Add, Devmgr takes ownership (relinquished on DdkRelease),
   // so transfer our ownership to a local var, and let it go out of scope.
+  printf("# EthDev0::EthBind: edev0.release()\n");
   auto __UNUSED temp_ref = edev0.release();
 
   return ZX_OK;

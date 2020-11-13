@@ -29,6 +29,7 @@ void eth_destroy(eth_client_t* eth) {
 zx_status_t eth_create(zx_handle_t svc, zx_handle_t io_vmo, void* io_mem, eth_client_t** out) {
   eth_client_t* eth;
 
+  printf("# eth_create: eth = calloc(1, sizeof(*eth))\n");
   if ((eth = calloc(1, sizeof(*eth))) == NULL) {
     return ZX_ERR_NO_MEMORY;
   }
@@ -36,6 +37,7 @@ zx_status_t eth_create(zx_handle_t svc, zx_handle_t io_vmo, void* io_mem, eth_cl
   fuchsia_hardware_ethernet_Fifos fifos;
   zx_status_t status, call_status;
 
+  printf("# eth_create: fuchsia_hardware_ethernet_DeviceGetFifos(svc, &call_status, &fifos)\n");
   status = fuchsia_hardware_ethernet_DeviceGetFifos(svc, &call_status, &fifos);
   if (status != ZX_OK || call_status != ZX_OK) {
     fprintf(stderr, "eth_create: failed to get fifos: %d, %d\n", status, call_status);
@@ -43,10 +45,12 @@ zx_status_t eth_create(zx_handle_t svc, zx_handle_t io_vmo, void* io_mem, eth_cl
   }
 
   zx_handle_t vmo;
+  printf("# eth_create: zx_handle_duplicate(io_vmo, ZX_RIGHT_SAME_RIGHTS, &vmo)\n");
   if ((status = zx_handle_duplicate(io_vmo, ZX_RIGHT_SAME_RIGHTS, &vmo)) < 0) {
     fprintf(stderr, "eth_create: failed to duplicate vmo\n");
     goto fail;
   }
+  printf("# eth_create: fuchsia_hardware_ethernet_DeviceSetIOBuffer(svc, vmo, &call_status)\n");
   status = fuchsia_hardware_ethernet_DeviceSetIOBuffer(svc, vmo, &call_status);
   if (status != ZX_OK || call_status != ZX_OK) {
     fprintf(stderr, "eth_create: failed to set iobuf: %d, %d\n", status, call_status);
@@ -55,6 +59,7 @@ zx_status_t eth_create(zx_handle_t svc, zx_handle_t io_vmo, void* io_mem, eth_cl
     }
     goto fail;
   }
+  printf("# eth_create: fuchsia_hardware_ethernet_DeviceSetClientName(svc, \"netsvc\", 6, &call_status)\n");
   status = fuchsia_hardware_ethernet_DeviceSetClientName(svc, "netsvc", 6, &call_status);
   if (status != ZX_OK || call_status != ZX_OK) {
     fprintf(stderr, "eth_create: failed to set client name %d, %d\n", status, call_status);
@@ -66,6 +71,7 @@ zx_status_t eth_create(zx_handle_t svc, zx_handle_t io_vmo, void* io_mem, eth_cl
   eth->tx_size = fifos.tx_depth;
   eth->iobuf = io_mem;
 
+  printf("# eth_create: *out = eth\n");
   *out = eth;
   return ZX_OK;
 

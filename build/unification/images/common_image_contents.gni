@@ -54,9 +54,11 @@ common_image_contents = [
   "//src/connectivity/ethernet/drivers/asix-88179",
   "//src/connectivity/ethernet/drivers/asix-88772b",
   "//src/connectivity/ethernet/drivers/dwmac",
+  "//src/connectivity/ethernet/drivers/bcmgenet",
   "//src/connectivity/ethernet/drivers/ethernet",
   "//src/connectivity/ethernet/drivers/ethertap",
   "//src/connectivity/ethernet/drivers/realtek-8211f",
+  "//src/connectivity/ethernet/drivers/bcm-54210e",
   "//src/connectivity/ethernet/drivers/rndis-function",
   "//src/connectivity/ethernet/drivers/usb-cdc-ecm",
   "//src/connectivity/ethernet/drivers/usb-cdc-ecm",
@@ -252,6 +254,7 @@ common_image_contents = [
   "//zircon/third_party/uapp/kilo",
   "//zircon/third_party/uapp/mkfs-msdosfs",
   "//third_party/sbase:cat_bin",
+  "//src/connectivity/network/netstack3",
 ]
 
 if (target_cpu == "arm64") {

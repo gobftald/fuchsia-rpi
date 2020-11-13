@@ -27,6 +27,7 @@ zx_device::zx_device(DriverHostContext* ctx, std::string name, zx_driver_t* drv)
 
   memcpy(name_, name.data(), len);
   name_[len] = '\0';
+  printf("# zx_device::zx_device: name = %s\n", name_);
 
   inspect_.emplace(driver->inspect().devices(), name_);
 }

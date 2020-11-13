@@ -159,6 +159,7 @@ where
                 responder_send!(responder, &mut Err(Errno::Eprotonosupport));
             }
             psocket::ProviderRequest::DatagramSocket { domain, proto, responder } => {
+                println!("##### handle_fidl_socket_provider_request");
                 responder_send!(
                     responder,
                     &mut self.socket::<psocket::DatagramSocketMarker, _>(domain, proto)

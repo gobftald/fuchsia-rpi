@@ -56,6 +56,7 @@ int DWMacDevice::Thread() {
 
   zx_status_t status;
   while (true) {
+  /*
     status = dma_irq_.wait(nullptr);
     if (!running_.load()) {
       status = ZX_OK;
@@ -79,6 +80,7 @@ int DWMacDevice::Thread() {
       bus_errors_++;
       zxlogf(ERROR, "dwmac: abnormal interrupt. status = 0x%08x", stat);
     }
+  */
   }
   return status;
 }
@@ -88,19 +90,24 @@ int DWMacDevice::WorkerThread() {
   //       their callbacks before proceeding further.
   //       Currently only supporting single PHY, we can add
   //       support for multiple PHY's easily when needed.
+  printf("# DWMacDevice::WorkerThread: sync_completion_wait(&cb_registered_signal_, ZX_TIME_INFINITE)\n");
   sync_completion_wait(&cb_registered_signal_, ZX_TIME_INFINITE);
 
   // Configure the phy.
+  printf("# DWMacDevice::WorkerThread: cbs_.config_phy(cbs_.ctx, mac_)\n");
   cbs_.config_phy(cbs_.ctx, mac_);
 
-  InitDevice();
+  printf("# DWMacDevice::WorkerThread: InitDevice()\n");
+  //InitDevice();
 
   auto thunk = [](void* arg) -> int { return reinterpret_cast<DWMacDevice*>(arg)->Thread(); };
 
   running_.store(true);
+  printf("# DWMacDevice::WorkerThread: thrd_create_with_name(&thread_, thunk, this, \"mac-thread\")\n");
   int ret = thrd_create_with_name(&thread_, thunk, this, "mac-thread");
   ZX_DEBUG_ASSERT(ret == thrd_success);
 
+  printf("# DWMacDevice::WorkerThread: DdkAdd(\"Designware MAC\")\n");
   zx_status_t status = DdkAdd("Designware MAC");
   if (status != ZX_OK) {
     zxlogf(ERROR, "dwmac: Could not create eth device: %d", status);
@@ -131,8 +138,10 @@ void DWMacDevice::UpdateLinkStatus() {
 }
 
 zx_status_t DWMacDevice::InitPdev() {
+  
   // Map mac control registers and dma control registers.
   auto status = pdev_.MapMmio(kEthMacMmio, &mmio_);
+  /*
   if (status != ZX_OK) {
     zxlogf(ERROR, "dwmac: could not map dwmac mmio: %d", status);
     return status;
@@ -151,8 +160,10 @@ zx_status_t DWMacDevice::InitPdev() {
     zxlogf(ERROR, "dwmac: could not obtain bti: %d", status);
     return status;
   }
-
+  */
+  
   // Get ETH_BOARD protocol.
+  printf("# DWMacDevice::InitPdev: if (!eth_board_.is_valid())\n");
   if (!eth_board_.is_valid()) {
     zxlogf(ERROR, "dwmac: could not obtain ETH_BOARD protocol: %d", status);
     return status;
@@ -166,42 +177,52 @@ zx_status_t DWMacDevice::Create(void* ctx, zx_device_t* device) {
   pdev_protocol_t pdev;
   eth_board_protocol_t eth_board;
 
+  printf("# dwmac: adding driver\n");
   auto status = device_get_protocol(device, ZX_PROTOCOL_COMPOSITE, &composite);
   if (status != ZX_OK) {
     zxlogf(ERROR, "%s could not get ZX_PROTOCOL_COMPOSITE", __func__);
     return status;
   }
+  // device = dwmac
 
   zx_device_t* fragments[FRAGMENT_COUNT];
   size_t actual;
   composite_get_fragments(&composite, fragments, FRAGMENT_COUNT, &actual);
+  /*
   if (actual != 2) {
     zxlogf(ERROR, "%s could not get fragments", __func__);
     return ZX_ERR_NOT_SUPPORTED;
   }
+  */
 
   status = device_get_protocol(fragments[FRAGMENT_PDEV], ZX_PROTOCOL_PDEV, &pdev);
   if (status != ZX_OK) {
     zxlogf(ERROR, "%s could not get ZX_PROTOCOL_PDEV", __func__);
     return status;
   }
+  // fragments[FRAGMENT_PDEV] = fragment-proxy
 
   status = device_get_protocol(fragments[FRAGMENT_ETH_BOARD], ZX_PROTOCOL_ETH_BOARD, &eth_board);
   if (status != ZX_OK) {
     zxlogf(ERROR, "%s could not get ZX_PROTOCOL_ETH_BOARD", __func__);
     return status;
   }
+  // fragments[FRAGMENT_ETH_BOARD] = fragment-0
 
+  printf("# dwmac: mac_device = std::make_unique<DWMacDevice>(device, &pdev, &eth_board)\n");
   auto mac_device = std::make_unique<DWMacDevice>(device, &pdev, &eth_board);
 
+  printf("# DWMacDevice::Create: mac_device->InitPdev()\n");
   status = mac_device->InitPdev();
   if (status != ZX_OK) {
     return status;
   }
 
   // Reset the phy.
-  mac_device->eth_board_.ResetPhy();
+  printf("# DWMacDevice::Create: mac_device->eth_board_.ResetPhy()\n");
+  //mac_device->eth_board_.ResetPhy();
 
+  /*
   // Get and cache the mac address.
   mac_device->GetMAC(fragments[FRAGMENT_PDEV]);
 
@@ -230,6 +251,7 @@ zx_status_t DWMacDevice::Create(void* ctx, zx_device_t* device) {
     return status;
 
   sync_completion_reset(&mac_device->cb_registered_signal_);
+  */
 
   // Populate board specific information
   eth_dev_metadata_t phy_info;
@@ -274,7 +296,7 @@ zx_status_t DWMacDevice::Create(void* ctx, zx_device_t* device) {
                                   reinterpret_cast<void*>(mac_device.get()), "mac-worker-thread");
   ZX_DEBUG_ASSERT(ret == thrd_success);
 
-  cleanup.cancel();
+  //cleanup.cancel();
 
   // mac_device intentionally leaked as it is now held by DevMgr.
   __UNUSED auto ptr = mac_device.release();
@@ -444,10 +466,15 @@ zx_status_t DWMacDevice::GetMAC(zx_device_t* dev) {
 }
 
 zx_status_t DWMacDevice::EthernetImplQuery(uint32_t options, ethernet_info_t* info) {
+  printf("# DWMacDevice::EthernetImplQuery: memset(info, 0, sizeof(*info))\n");
   memset(info, 0, sizeof(*info));
+  printf("# DWMacDevice::EthernetImplQuery: info->features = ETHERNET_FEATURE_DMA\n");
   info->features = ETHERNET_FEATURE_DMA;
+  printf("# DWMacDevice::EthernetImplQuery: info->mtu = 1500\n");
   info->mtu = 1500;
+  printf("# DWMacDevice::EthernetImplQuery: memcpy(info->mac, mac_, sizeof info->mac)\n");
   memcpy(info->mac, mac_, sizeof info->mac);
+  printf("# DWMacDevice::EthernetImplQuery: info->netbuf_size = eth::BorrowedOperation<>::OperationSize(sizeof(ethernet_netbuf_t))\n");
   info->netbuf_size = eth::BorrowedOperation<>::OperationSize(sizeof(ethernet_netbuf_t));
   return ZX_OK;
 }

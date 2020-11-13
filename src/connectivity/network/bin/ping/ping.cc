@@ -280,6 +280,7 @@ int main(int argc, char** argv) {
       return -1;
   }
 
+  printf("# socket(info->ai_family, SOCK_DGRAM, proto)\n");
   int s = socket(info->ai_family, SOCK_DGRAM, proto);
   if (s < 0) {
     fprintf(stderr, "Could not acquire ICMP socket: %s\n", strerror(errno));

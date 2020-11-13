@@ -262,6 +262,7 @@ struct GenericProtocol {
 
 __EXPORT zx_status_t device_get_protocol(const zx_device_t* dev, uint32_t proto_id, void* out) {
   auto proto = static_cast<GenericProtocol*>(out);
+  printf("# device_get_protocol: dev->name_ = '%s'\n", dev->name());
   if (dev->ops()->get_protocol) {
     return dev->ops()->get_protocol(dev->ctx, proto_id, out);
   }

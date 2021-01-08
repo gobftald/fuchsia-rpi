@@ -19,7 +19,6 @@ fbl::RefPtr<PinnedBuffer> PinnedBuffer::Create(size_t size, const zx::bti& bti,
   }
 
   // create vmar large enough for rx,tx buffers, and rx,tx dma descriptors
-  printf("# PinnedBuffer::Create: vmar_mgr = fzl::VmarManager::Create(size, nullptr)\n");
   vmar_mgr = fzl::VmarManager::Create(size, nullptr);
   if (!vmar_mgr) {
     zxlogf(ERROR, "pinned-buffer: Creation of vmar manager failed");
@@ -27,18 +26,11 @@ fbl::RefPtr<PinnedBuffer> PinnedBuffer::Create(size_t size, const zx::bti& bti,
   }
 
   fbl::AllocChecker ac;
-
-  printf("# PinnedBuffer::Create: pbuf = fbl::AdoptRef(new (&ac) PinnedBuffer())\n");
   auto pbuf = fbl::AdoptRef(new (&ac) PinnedBuffer());
   if (!ac.check()) {
     return nullptr;
   }
 
-  printf("# PinnedBuffer::Create: pbuf->vmo_mapper_.CreateAndMap(size,\n");
-  printf("# PinnedBuffer::Create:     ZX_VM_PERM_READ | ZX_VM_PERM_WRITE,\n");
-  printf("# PinnedBuffer::Create:     std::move(vmar_mgr), &pbuf->vmo_,\n");
-  printf("# PinnedBuffer::Create:     ZX_RIGHT_READ | ZX_RIGHT_MAP | ZX_RIGHT_WRITE,\n");
-  printf("# PinnedBuffer::Create:     cache_policy)\n");
   zx_status_t status = pbuf->vmo_mapper_.CreateAndMap(
       size, ZX_VM_PERM_READ | ZX_VM_PERM_WRITE, std::move(vmar_mgr), &pbuf->vmo_,
       ZX_RIGHT_READ | ZX_RIGHT_MAP | ZX_RIGHT_WRITE, cache_policy);
@@ -48,9 +40,6 @@ fbl::RefPtr<PinnedBuffer> PinnedBuffer::Create(size_t size, const zx::bti& bti,
   }
 
   uint32_t page_count = static_cast<uint32_t>(size / PAGE_SIZE);
-  printf("# PinnedBuffer::Create: page_count = static_cast<uint32_t>(size / PAGE_SIZE) = 0x%x (%d)\n", page_count, page_count);
-
-  printf("# PinnedBuffer::Create: std::unique_ptr<zx_paddr_t[]> addrs(new (&ac) zx_paddr_t[page_count])\n");
   std::unique_ptr<zx_paddr_t[]> addrs(new (&ac) zx_paddr_t[page_count]);
   if (!ac.check()) {
     return nullptr;
@@ -59,15 +48,11 @@ fbl::RefPtr<PinnedBuffer> PinnedBuffer::Create(size_t size, const zx::bti& bti,
   // Now actually pin the region.
   status = bti.pin(ZX_BTI_PERM_READ | ZX_BTI_PERM_WRITE, pbuf->vmo_, 0, size, addrs.get(),
                    page_count, &pbuf->pmt_);
-  printf("# PinnedBuffer::Create: bti.pin(ZX_BTI_PERM_READ | ZX_BTI_PERM_WRITE, pbuf->vmo_,\n");
-  printf("# PinnedBuffer::Create:         0, size = 0x%x, addrs.get(), page_count = 0x%x, &pbuf->pmt_)\n",
-                                          (uint32_t)size, (uint32_t)page_count);
   if (status != ZX_OK) {
     pbuf->UnPin();
     return nullptr;
   }
 
-  printf("# PinnedBuffer::Create: pbuf->paddrs_.reset(addrs.release())\n");
   pbuf->paddrs_.reset(addrs.release());
   return pbuf;
 }

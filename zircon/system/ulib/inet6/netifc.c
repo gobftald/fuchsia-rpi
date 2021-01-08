@@ -223,32 +223,24 @@ int netifc_open(const char* interface) {
   if (netifc_discover("/dev/class/ethernet", interface, &g_netsvc, g_netmac)) {
     goto fail_close_svc;
   }
-  printf("# netifc_open: after netifc_discover(\"/dev/class/ethernet\", interface, &g_netsvc, g_netmac)\n");
 
   // we only do this the very first time
   if (eth_buffer_base == NULL) {
-    printf("# netifc_open: eth_buffer_base = memalign(sizeof(eth_buffer_t), 2 * NET_BUFFERS * sizeof(eth_buffer_t))\n");
     eth_buffer_base = memalign(sizeof(eth_buffer_t), 2 * NET_BUFFERS * sizeof(eth_buffer_t));
     if (eth_buffer_base == NULL) {
       goto fail_close_svc;
     }
     eth_buffer_count = 2 * NET_BUFFERS;
   }
-  printf("# netifc_open: eth_buffer_base = 0x%lx\n", (uint64_t)eth_buffer_base);
-  printf("# netifc_open: eth_buffer_count = %lu\n", eth_buffer_count);
 
   // we only do this the very first time
   if (iobuf == NULL) {
     // allocate shareable ethernet buffer data heap
     size_t iosize = 2 * NET_BUFFERS * NET_BUFFERSZ;
-    printf("# netifc_open: iosize = %lu\n", iosize);
-    printf("# netifc_open: zx_vmo_create(iosize, 0, &iovmo)\n");
     if ((status = zx_vmo_create(iosize, 0, &iovmo)) < 0) {
       goto fail_close_svc;
     }
-    printf("# netifc_open: zx_object_set_property(iovmo, ZX_PROP_NAME, \"eth-buffers\", 11)\n");
     zx_object_set_property(iovmo, ZX_PROP_NAME, "eth-buffers", 11);
-    printf("# netifc_open: zx_vmar_map(zx_vmar_root_self(), ZX_VM_PERM_READ | ZX_VM_PERM_WRITE, 0, iovmo, 0, iosize, (uintptr_t*)&iobuf)\n");
     if ((status = zx_vmar_map(zx_vmar_root_self(), ZX_VM_PERM_READ | ZX_VM_PERM_WRITE, 0, iovmo, 0,
                               iosize, (uintptr_t*)&iobuf)) < 0) {
       zx_handle_close(iovmo);
@@ -266,7 +258,6 @@ int netifc_open(const char* interface) {
     }
   }
 
-  printf("# netifc_open: eth_create(g_netsvc, iovmo, iobuf, &g_eth)\n");
   status = eth_create(g_netsvc, iovmo, iobuf, &g_eth);
   if (status < 0) {
     printf("eth_create() failed: %d\n", status);
@@ -274,26 +265,22 @@ int netifc_open(const char* interface) {
   }
 
   zx_status_t call_status = ZX_OK;
-  printf("# netifc_open: fuchsia_hardware_ethernet_DeviceStart(g_netsvc, &call_status)\n");
   status = fuchsia_hardware_ethernet_DeviceStart(g_netsvc, &call_status);
   if (status != ZX_OK || call_status != ZX_OK) {
     printf("netifc: ethernet_impl_start(): %d, %d\n", status, call_status);
     goto fail_destroy_client;
   }
 
-  printf("# netifc_open: ip6_init(g_netmac, false)\n");
   ip6_init(g_netmac, false);
 
   // enqueue rx buffers
   for (unsigned n = 0; n < NET_BUFFERS; n++) {
     void* data;
     eth_buffer_t* ethbuf;
-    printf("# netifc_open: eth_get_buffer_locked(NET_BUFFERSZ, &data, &ethbuf, ETH_BUFFER_RX, false)\n");
     if (eth_get_buffer_locked(NET_BUFFERSZ, &data, &ethbuf, ETH_BUFFER_RX, false)) {
       printf("netifc: only queued %u buffers (desired: %u)\n", n, NET_BUFFERS);
       break;
     }
-    printf("# netifc_open: eth_queue_rx(g_eth, ethbuf, ethbuf->data, NET_BUFFERSZ, 0)\n");
     eth_queue_rx(g_eth, ethbuf, ethbuf->data, NET_BUFFERSZ, 0);
   }
 

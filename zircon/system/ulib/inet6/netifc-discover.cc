@@ -35,20 +35,17 @@ static zx_status_t netifc_open_cb(int dirfd, int event, const char* filename, vo
   printf("netifc: ? %s/%s\n", ctx->dirname, filename);
 
   int fd;
-  printf("# netifc_open_cb: fd = openat(dirfd, filename, O_RDWR)\n");
   if ((fd = openat(dirfd, filename, O_RDWR)) < 0) {
     return ZX_OK;
   }
 
   zx_handle_t netsvc = ZX_HANDLE_INVALID;
-  printf("# netifc_open_cb: fdio_get_service_handle(fd, &netsvc)\n");
   zx_status_t status = fdio_get_service_handle(fd, &netsvc);
   if (status != ZX_OK) {
     goto fail_close_svc;
   }
 
   if (ctx->interface != NULL) {
-    printf("# netifc_open_cb: *(ctx->interface) = netsvc = 0x%lx\n", (uint64_t)netsvc);
     *(ctx->interface) = netsvc;
   }
   // If an interface was specified, check the topological path of this device and reject it if it
@@ -57,7 +54,6 @@ static zx_status_t netifc_open_cb(int dirfd, int event, const char* filename, vo
     const char* interface = ctx->topological_path;
     char buf[1024];
     size_t actual_len;
-    printf("# netifc_open_cb: ::llcpp::fuchsia::device::Controller::Call::GetTopologicalPath(zx::unowned_channel(netsvc))\n");
     auto resp =
         ::llcpp::fuchsia::device::Controller::Call::GetTopologicalPath(zx::unowned_channel(netsvc));
     status = resp.status();
@@ -86,34 +82,22 @@ static zx_status_t netifc_open_cb(int dirfd, int event, const char* filename, vo
       topo_path++;
     if (interface[0] == '@')
       interface++;
-    
 
     if (strncmp(topo_path, interface, sizeof(buf))) {
       goto fail_close_svc;
     }
-    printf("# netifc_open_cb: topo_path = %s\n", topo_path);
   }
 
   fuchsia_hardware_ethernet_Info info;
-  printf("# netifc_open_cb: fuchsia_hardware_ethernet_DeviceGetInfo(netsvc, &info)\n");
   if (fuchsia_hardware_ethernet_DeviceGetInfo(netsvc, &info) != ZX_OK) {
     goto fail_close_svc;
   }
-  printf("# netifc_open_cb: info.features = 0x%x\n", info.features);
   if (info.features & fuchsia_hardware_ethernet_INFO_FEATURE_WLAN) {
     // Don't run netsvc for wireless network devices
     goto fail_close_svc;
   }
-  printf("# netifc_open_cb: memcpy(ctx->netmac, info.mac.octets, sizeof(ctx->netmac))\n");
   memcpy(ctx->netmac, info.mac.octets, sizeof(ctx->netmac));
-  int i;
-  printf("# netifc_open_cb: ctx->netmac = ");
-  for (i = 0; i < 6; i++) {
-    printf("%x ", ctx->netmac[i]);
-  }
-  printf("\n");
   ctx->netmtu = static_cast<uint16_t>(info.mtu);
-  printf("# netifc_open_cb: ctx->netmtu = %d\n", (uint16_t)ctx->netmtu);
 
   printf("netsvc: using %s/%s\n", ctx->dirname, filename);
 
@@ -130,11 +114,9 @@ fail_close_svc:
 zx_status_t netifc_discover(const char* ethdir, const char* topological_path,
                             zx_handle_t* interface, uint8_t netmac[6]) {
   int dirfd;
-  printf("# netifc_discover: dirfd = open(ethdir, O_DIRECTORY | O_RDONLY)\n");
   if ((dirfd = open(ethdir, O_DIRECTORY | O_RDONLY)) < 0) {
     return -1;
   }
-  printf("# netifc_discover: dirfd = 0x%x\n", dirfd);
 
   netifc_cb_ctx_t ctx = {
       .dirname = ethdir,
@@ -143,25 +125,15 @@ zx_status_t netifc_discover(const char* ethdir, const char* topological_path,
       .netmac = {},
       .netmtu = 0,
   };
-  printf("# netifc_discover: fdio_watch_directory(dirfd, netifc_open_cb, ZX_TIME_INFINITE, (void*)&ctx)\n");
   zx_status_t status = fdio_watch_directory(dirfd, netifc_open_cb, ZX_TIME_INFINITE, (void*)&ctx);
-  printf("# netifc_discover: close(dirfd)\n");
   close(dirfd);
 
   // callback returns STOP if it finds and successfully
   // opens a network interface
-  printf("# netifc_discover: if (status != ZX_ERR_STOP)\n");
   if (status != ZX_ERR_STOP) {
     return -1;
   }
 
-  printf("# netifc_discover: memcpy(netmac, ctx.netmac, 6)\n");
   memcpy(netmac, ctx.netmac, 6);
-  int i;
-  printf("# netifc_discover: netmac = ");
-  for (i = 0; i < 6; i++) {
-    printf("%x ", netmac[i]);
-  }
-  printf("\n");
   return ZX_OK;
 }

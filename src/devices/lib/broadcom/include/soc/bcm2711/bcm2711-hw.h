@@ -7,7 +7,7 @@
 
 // Ethernet base
 #define BCM2711_ETH_BASE        0xfd580000            // from DT (BCM54210E)
-#define BCM2711_ETH_LENGTH      0x1000
+#define BCM2711_ETH_LENGTH      0x10000
 
 // Ethernet UMAC IRQs
 #define BCM2711_UMAC_IRQ_0      189                   // GIC_SPI 157

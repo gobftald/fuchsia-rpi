@@ -90,22 +90,12 @@ int main(int argc, char** argv) {
   bool print_nodename_and_exit = false;
   bool should_advertise = false;
 
-  int i;
-  for (i = 0; i < argc; i++) {
-    printf("# netsvc: main: argv[%d] = %s\n", i, argv[i]);
-  }
   const char* error;
-  printf("# netsvc: main: parse_netsvc_args(...)\n");
   if (parse_netsvc_args(argc, argv, &error, &g_netbootloader, &print_nodename_and_exit,
                         &should_advertise, &g_all_features, &interface) < 0) {
     printf("netsvc: fatal error: %s\n", error);
     return -1;
   };
-  printf("# netsvc: main: g_netbootloader = %d\n", g_netbootloader);
-  printf("# netsvc: main: print_nodename_and_exit = %d\n", print_nodename_and_exit);
-  printf("# netsvc: main: should_advertise = %d\n", should_advertise);
-  printf("# netsvc: main: g_all_features = %d\n", g_all_features);
-  printf("# netsvc: main: interface = %s\n", interface);
 
   if (g_netbootloader && !g_all_features) {
     printf("netsvc: fatal: --netboot requires --all-features\n");
@@ -120,7 +110,6 @@ int main(int argc, char** argv) {
 
   printf("netsvc: running in %s mode\n", g_all_features ? "full" : "limited");
 
-  printf("# netsvc: gethostname(g_nodename, sizeof(g_nodename))\n");
   gethostname(g_nodename, sizeof(g_nodename));
 
   printf("netsvc: nodename='%s'\n", g_nodename);
@@ -138,7 +127,6 @@ int main(int argc, char** argv) {
   }
 
   for (;;) {
-    printf("# netsvc: netifc_open(interface = %s)\n", interface);
     if (netifc_open(interface) != 0) {
       printf("netsvc: fatal error initializing network\n");
       return -1;

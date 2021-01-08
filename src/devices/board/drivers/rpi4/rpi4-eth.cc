@@ -57,8 +57,9 @@ static const pbus_boot_metadata_t eth_mac_metadata[] = {
 
 static pbus_dev_t eth_dev = []() {
   pbus_dev_t dev = {};
-  dev.name = "bcmgenet";
+  dev.name = "bcm-unimac";
   dev.vid = PDEV_VID_BROADCOM;
+  dev.pid = PDEV_PID_BCM2711;
   dev.did = PDEV_DID_BCM_UNIMAC;
   dev.mmio_list = eth_mac_mmios;
   dev.mmio_count = countof(eth_mac_mmios);
